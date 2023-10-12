@@ -164,7 +164,28 @@ class SDMGR(BaseModel):
         x = self.extract_feat(
             inputs,
             [data_sample.gt_instances.bboxes for data_sample in data_samples])
-        return self.kie_head.predict(x, data_samples)
+        predictions = self.kie_head.predict(x, data_samples)
+
+        for prediction in predictions:
+            # Combine recognized entities of the same type
+            combined_entities = {}
+            for entity, entity_type in zip(prediction.labels, prediction.entity_types):
+                if entity_type not in combined_entities:
+                    combined_entities[entity_type] = entity
+                else:
+                    combined_entities[entity_type] += ' ' + entity
+
+            # Create a formatted entity, e.g., 'passenger name: Jane Doe'
+            formatted_entity = {
+                'label': 'passenger name',
+                'text': combined_entities.get('Person', '')
+            }
+
+            # Update the prediction with the formatted entity
+            prediction.labels = [formatted_entity]
+            prediction.entity_types = ['Person']
+
+        return predictions
 
     def _forward(self, inputs: torch.Tensor,
                  data_samples: Sequence[KIEDataSample],
