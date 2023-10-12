@@ -144,27 +144,33 @@ class SDMGR(BaseModel):
             [data_sample.gt_instances.bboxes for data_sample in data_samples])
         return self.kie_head.loss(x, data_samples)
 
-    def predict(self, inputs: torch.Tensor,
-                data_samples: Sequence[KIEDataSample],
-                **kwargs) -> List[KIEDataSample]:
-        """Predict results from a batch of inputs and data samples with post-
-        processing.
-        Args:
-            inputs (torch.Tensor): Input images of shape (N, C, H, W).
-                Typically these should be mean centered and std scaled.
-            data_samples (list[KIEDataSample]): A list of N datasamples,
-                containing meta information and gold annotations for each of
-                the images.
+    def predict(self, inputs: torch.Tensor, data_samples: Sequence[KIEDataSample], **kwargs) -> List[KIEDataSample]:
+    x = self.extract_feat(
+        inputs,
+        [data_sample.gt_instances.bboxes for data_sample in data_samples])
+    predictions = self.kie_head.predict(x, data_samples)
 
-        Returns:
-            List[KIEDataSample]: A list of datasamples of prediction results.
-            Results are stored in ``pred_instances.labels`` and
-            ``pred_instances.edge_labels``.
-        """
-        x = self.extract_feat(
-            inputs,
-            [data_sample.gt_instances.bboxes for data_sample in data_samples])
-        return self.kie_head.predict(x, data_samples)
+    for prediction in predictions:
+        # Combine recognized entities of the same type
+        combined_entities = {}
+        for entity, entity_type in zip(prediction.labels, prediction.entity_types):
+            if entity_type not in combined_entities:
+                combined_entities[entity_type] = entity
+            else:
+                combined_entities[entity_type] += ' ' + entity
+
+        # Create a formatted entity, e.g., 'passenger name: Jane Doe'
+        formatted_entity = {
+            'label': 'passenger name',
+            'text': combined_entities.get('Person', '')
+        }
+
+        # Update the prediction with the formatted entity
+        prediction.labels = [formatted_entity]
+        prediction.entity_types = ['Person']
+
+    return predictions
+
 
     def _forward(self, inputs: torch.Tensor,
                  data_samples: Sequence[KIEDataSample],
