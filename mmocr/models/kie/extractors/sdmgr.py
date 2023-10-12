@@ -144,23 +144,7 @@ class SDMGR(BaseModel):
             [data_sample.gt_instances.bboxes for data_sample in data_samples])
         return self.kie_head.loss(x, data_samples)
 
-    def predict(self, inputs: torch.Tensor,
-                data_samples: Sequence[KIEDataSample],
-                **kwargs) -> List[KIEDataSample]:
-        """Predict results from a batch of inputs and data samples with post-
-        processing.
-        Args:
-            inputs (torch.Tensor): Input images of shape (N, C, H, W).
-                Typically these should be mean centered and std scaled.
-            data_samples (list[KIEDataSample]): A list of N datasamples,
-                containing meta information and gold annotations for each of
-                the images.
-
-        Returns:
-            List[KIEDataSample]: A list of datasamples of prediction results.
-            Results are stored in ``pred_instances.labels`` and
-            ``pred_instances.edge_labels``.
-        """
+    def predict(self, inputs: torch.Tensor, data_samples: Sequence[KIEDataSample], **kwargs) -> List[KIEDataSample]:
         x = self.extract_feat(
             inputs,
             [data_sample.gt_instances.bboxes for data_sample in data_samples])
